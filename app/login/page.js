@@ -52,7 +52,7 @@ export default function Login() {
   }
 
   // ✅ Fixed Google Login using Server Route
-const handleGoogleSignup = async () => {
+const handleGoogleLogin = async () => {
   setIsGoogleLoading(true)
 
   const { error } = await supabase.auth.signInWithOAuth({
