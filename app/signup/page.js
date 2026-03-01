@@ -45,16 +45,17 @@ export default function Signup() {
 
   // ── Google Signup (NEW — one line!) ──
   const handleGoogleSignup = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: window.location.origin,
-      },
-    })
-    if (error) {
-      alert(error.message)
-    }
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: "https://slidewizard-nine.vercel.app",
+    },
+  })
+
+  if (error) {
+    alert(error.message)
   }
+}
 
   return (
     <main className="relative min-h-[100dvh] overflow-hidden bg-[#0a0a0f] text-white flex items-center justify-center px-4 py-6 md:px-5 md:py-10">
