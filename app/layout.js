@@ -12,8 +12,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "SlideWizard Pro - AI PPT Maker",
-  description: "SlideWizard Pro generates stunning AI-powered presentations in seconds.",
+  title: "SlideWizard Pro – Free AI PPT Maker & Presentation Generator",
+  description:
+    "SlideWizard Pro is a free AI-powered PPT maker that creates stunning presentations instantly. Generate slides in seconds with smart design and AI content.",
   verification: {
     google: "TVFY2lokGI_6Lzw2eDu_3Zrw773c7g-qcpV8yyjpHBU",
   },
