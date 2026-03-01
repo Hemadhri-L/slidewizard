@@ -5,38 +5,46 @@ import { NextResponse } from "next/server"
 export async function GET(request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get("code")
-  const next = requestUrl.searchParams.get("next") ?? "/"
+  const next = "/"
+
+  const cookieStore = await cookies()
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        get(name) {
+          return cookieStore.get(name)?.value
+        },
+        set(name, value, options) {
+          cookieStore.set({
+            name,
+            value,
+            ...options,
+            secure: true,
+            sameSite: "lax",
+          })
+        },
+        remove(name, options) {
+          cookieStore.delete({
+            name,
+            ...options,
+          })
+        },
+      },
+    }
+  )
 
   if (code) {
-    const cookieStore = await cookies()
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      {
-        cookies: {
-          get(name) {
-            return cookieStore.get(name)?.value
-          },
-          set(name, value, options) {
-            cookieStore.set({ name, value, ...options })
-          },
-          remove(name, options) {
-            cookieStore.delete({ name, ...options })
-          },
-        },
-      }
-    )
-
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
-      // ✅ Use requestUrl.origin (safer on mobile + Vercel)
       return NextResponse.redirect(new URL(next, requestUrl.origin))
     }
-
-    console.error("Auth Error:", error)
   }
 
-  return NextResponse.redirect(new URL("/login?error=auth-code-error", requestUrl.origin))
+  return NextResponse.redirect(
+    new URL("/login?error=auth-code-error", requestUrl.origin)
+  )
 }
