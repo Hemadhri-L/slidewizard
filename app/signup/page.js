@@ -1,12 +1,16 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { supabase } from "@/utils/supabaseClient"
+// We use createClient here to ensure we use the Browser Client with Cookies
+import { createClient } from "@/utils/supabaseClient" 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 export default function Signup() {
   const router = useRouter()
+  // Initialize the client component-side
+  const supabase = createClient()
+
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -15,24 +19,18 @@ export default function Signup() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [success, setSuccess] = useState(false)
 
-  // ── Handle OAuth redirect result on mount ──
+  // Check if user is already logged in
   useEffect(() => {
-    const handleAuthRedirect = async () => {
-      // Check if we're returning from an OAuth redirect
-      const hashParams = new URLSearchParams(window.location.hash.substring(1))
-      const queryParams = new URLSearchParams(window.location.search)
-      
-      if (hashParams.get("access_token") || queryParams.get("code")) {
-        // Supabase client will automatically handle the session
-        const { data } = await supabase.auth.getSession()
-        if (data.session) {
-          router.push("/dashboard")
-        }
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession()
+      if (data.session) {
+        router.push("/")
       }
     }
-    handleAuthRedirect()
-  }, [router])
+    checkSession()
+  }, [router, supabase])
 
+  // Standard Email/Password Signup
   const handleSignup = async () => {
     if (!email || !password) {
       alert("Please fill in all fields.")
@@ -63,41 +61,25 @@ export default function Signup() {
     }
   }
 
-  // ── Fixed Google Signup for Mobile ──
+  // ✅ Fixed Google Signup using Server Route
   const handleGoogleSignup = async () => {
     setIsGoogleLoading(true)
 
-    try {
-      // Dynamically get the current origin to handle all environments
-      const redirectURL = `${window.location.origin}/auth/callback`
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: redirectURL,
-          // Force redirect instead of popup (fixes mobile)
-          skipBrowserRedirect: false,
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        // Points to the server-side route handler that manages cookies
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          access_type: "offline",
+          prompt: "consent",
         },
-      })
+      },
+    })
 
-      if (error) {
-        console.error("Google OAuth error:", error)
-        alert(error.message)
-        setIsGoogleLoading(false)
-        return
-      }
-
-      // If for some reason the redirect didn't happen automatically
-      if (data?.url) {
-        window.location.href = data.url
-      }
-    } catch (err) {
-      console.error("Google signup failed:", err)
-      alert("Google sign-in failed. Please try again.")
+    if (error) {
+      console.error("Google Error:", error)
+      alert(error.message)
       setIsGoogleLoading(false)
     }
   }
@@ -105,12 +87,12 @@ export default function Signup() {
   return (
     <main className="relative min-h-[100dvh] overflow-hidden bg-[#0a0a0f] text-white flex items-center justify-center px-4 py-6 md:px-5 md:py-10">
 
-      {/* ── Animated Background Orbs ── */}
+      {/* ── Animated Background ── */}
       <div className="absolute w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-purple-600 rounded-full blur-[120px] md:blur-[180px] opacity-20 -top-20 -left-20 md:-top-40 md:-left-40 animate-pulse-slow" />
       <div className="absolute w-[250px] md:w-[400px] h-[250px] md:h-[400px] bg-blue-600 rounded-full blur-[100px] md:blur-[160px] opacity-15 -bottom-20 -right-20 md:-bottom-32 md:-right-32 animate-pulse-slow2" />
       <div className="absolute w-[200px] md:w-[300px] h-[200px] md:h-[300px] bg-pink-600 rounded-full blur-[90px] md:blur-[140px] opacity-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-float" />
 
-      {/* ── Floating Particles ── */}
+      {/* ── Particles ── */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[...Array(6)].map((_, i) => (
           <div
@@ -125,8 +107,8 @@ export default function Signup() {
         ))}
       </div>
 
-      {/* ── Success Screen ── */}
       {success ? (
+        // ── Success View ──
         <div className="relative z-10 w-full max-w-md animate-scale-in">
           <div className="bg-white/[0.06] border border-white/10 rounded-3xl backdrop-blur-2xl p-6 md:p-10 shadow-2xl shadow-purple-500/5 text-center">
             <div className="mx-auto w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center mb-6 animate-bounce-in shadow-lg shadow-emerald-500/30">
@@ -155,11 +137,9 @@ export default function Signup() {
           </div>
         </div>
       ) : (
-
-        /* ── Signup Form ── */
+        // ── Signup Form ──
         <div className="relative z-10 w-full max-w-md animate-fade-up">
 
-          {/* Logo */}
           <div className="text-center mb-6 md:mb-8">
             <div className="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-600 mb-4 shadow-lg shadow-purple-500/25 animate-float-logo">
               <span className="text-2xl md:text-3xl">🤖</span>
@@ -172,10 +152,8 @@ export default function Signup() {
             </p>
           </div>
 
-          {/* Glass Card */}
           <div className="bg-white/[0.06] border border-white/10 rounded-3xl backdrop-blur-2xl p-5 md:p-8 shadow-2xl shadow-purple-500/5 hover:shadow-purple-500/10 transition-shadow duration-500">
 
-            {/* ✅ Google Sign Up — Fixed for Mobile */}
             <button
               onClick={handleGoogleSignup}
               disabled={isGoogleLoading}
@@ -187,7 +165,7 @@ export default function Signup() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  <span className="text-sm font-medium text-gray-300">Connecting to Google...</span>
+                  <span className="text-sm font-medium text-gray-300">Connecting...</span>
                 </>
               ) : (
                 <>
@@ -202,14 +180,12 @@ export default function Signup() {
               )}
             </button>
 
-            {/* Divider */}
             <div className="flex items-center gap-4 mb-6">
               <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
               <span className="text-xs text-gray-500 uppercase tracking-wider font-medium">or</span>
               <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
             </div>
 
-            {/* Email */}
             <div className="space-y-4">
               <div className="group">
                 <label className="block text-xs font-medium text-gray-400 mb-2 ml-1 group-focus-within:text-purple-400 transition-colors">
@@ -231,7 +207,6 @@ export default function Signup() {
                 </div>
               </div>
 
-              {/* Password */}
               <div className="group">
                 <label className="block text-xs font-medium text-gray-400 mb-2 ml-1 group-focus-within:text-purple-400 transition-colors">
                   Password
@@ -268,7 +243,6 @@ export default function Signup() {
                 </div>
               </div>
 
-              {/* Confirm Password */}
               <div className="group">
                 <label className="block text-xs font-medium text-gray-400 mb-2 ml-1 group-focus-within:text-purple-400 transition-colors">
                   Confirm Password
@@ -312,7 +286,6 @@ export default function Signup() {
                 </div>
               </div>
 
-              {/* Password Strength */}
               {password && (
                 <div className="animate-fade-in">
                   <div className="flex gap-1.5 mb-1.5">
@@ -343,7 +316,6 @@ export default function Signup() {
               )}
             </div>
 
-            {/* Signup Button */}
             <button
               onClick={handleSignup}
               disabled={isLoading || !email || !password || password !== confirmPassword}
@@ -377,7 +349,6 @@ export default function Signup() {
             </p>
           </div>
 
-          {/* Login Link */}
           <p className="text-center mt-6 text-sm text-gray-400">
             Already have an account?{" "}
             <Link href="/login" className="text-purple-400 hover:text-purple-300 font-semibold hover:underline underline-offset-4 transition-colors">
@@ -385,7 +356,6 @@ export default function Signup() {
             </Link>
           </p>
 
-          {/* Features */}
           <div className="mt-8 grid grid-cols-3 gap-3">
             {[
               { icon: "⚡", label: "AI Powered" },
@@ -401,6 +371,7 @@ export default function Signup() {
         </div>
       )}
 
+      {/* ── CSS Animations ── */}
       <style jsx global>{`
         @keyframes gradient {
           0% { background-position: 0% 50%; }
