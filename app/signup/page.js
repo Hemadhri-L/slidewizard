@@ -62,27 +62,10 @@ export default function Signup() {
   }
 
   // ✅ Fixed Google Signup using Server Route
-  const handleGoogleSignup = async () => {
-    setIsGoogleLoading(true)
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        // Points to the server-side route handler that manages cookies
-        redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: {
-          access_type: "offline",
-          prompt: "consent",
-        },
-      },
-    })
-
-    if (error) {
-      console.error("Google Error:", error)
-      alert(error.message)
-      setIsGoogleLoading(false)
-    }
-  }
+  const handleGoogleSignup = () => {
+  setIsGoogleLoading(true)
+  window.location.href = "/api/auth/google"
+}
 
   return (
     <main className="relative min-h-[100dvh] overflow-hidden bg-[#0a0a0f] text-white flex items-center justify-center px-4 py-6 md:px-5 md:py-10">
