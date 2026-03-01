@@ -1,18 +1,38 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { supabase } from "@/utils/supabaseClient"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 export default function Signup() {
+  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [success, setSuccess] = useState(false)
 
-  // ── Email/Password Signup (your existing logic) ──
+  // ── Handle OAuth redirect result on mount ──
+  useEffect(() => {
+    const handleAuthRedirect = async () => {
+      // Check if we're returning from an OAuth redirect
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+      const queryParams = new URLSearchParams(window.location.search)
+      
+      if (hashParams.get("access_token") || queryParams.get("code")) {
+        // Supabase client will automatically handle the session
+        const { data } = await supabase.auth.getSession()
+        if (data.session) {
+          router.push("/dashboard")
+        }
+      }
+    }
+    handleAuthRedirect()
+  }, [router])
+
   const handleSignup = async () => {
     if (!email || !password) {
       alert("Please fill in all fields.")
@@ -43,24 +63,49 @@ export default function Signup() {
     }
   }
 
-  // ── Google Signup (NEW — one line!) ──
+  // ── Fixed Google Signup for Mobile ──
   const handleGoogleSignup = async () => {
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: "https://slidewizard-nine.vercel.app",
-    },
-  })
+    setIsGoogleLoading(true)
 
-  if (error) {
-    alert(error.message)
+    try {
+      // Dynamically get the current origin to handle all environments
+      const redirectURL = `${window.location.origin}/auth/callback`
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirectURL,
+          // Force redirect instead of popup (fixes mobile)
+          skipBrowserRedirect: false,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      })
+
+      if (error) {
+        console.error("Google OAuth error:", error)
+        alert(error.message)
+        setIsGoogleLoading(false)
+        return
+      }
+
+      // If for some reason the redirect didn't happen automatically
+      if (data?.url) {
+        window.location.href = data.url
+      }
+    } catch (err) {
+      console.error("Google signup failed:", err)
+      alert("Google sign-in failed. Please try again.")
+      setIsGoogleLoading(false)
+    }
   }
-}
 
   return (
     <main className="relative min-h-[100dvh] overflow-hidden bg-[#0a0a0f] text-white flex items-center justify-center px-4 py-6 md:px-5 md:py-10">
 
-      {/* ── Animated Background Orbs (Responsive Sizes) ── */}
+      {/* ── Animated Background Orbs ── */}
       <div className="absolute w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-purple-600 rounded-full blur-[120px] md:blur-[180px] opacity-20 -top-20 -left-20 md:-top-40 md:-left-40 animate-pulse-slow" />
       <div className="absolute w-[250px] md:w-[400px] h-[250px] md:h-[400px] bg-blue-600 rounded-full blur-[100px] md:blur-[160px] opacity-15 -bottom-20 -right-20 md:-bottom-32 md:-right-32 animate-pulse-slow2" />
       <div className="absolute w-[200px] md:w-[300px] h-[200px] md:h-[300px] bg-pink-600 rounded-full blur-[90px] md:blur-[140px] opacity-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-float" />
@@ -84,13 +129,11 @@ export default function Signup() {
       {success ? (
         <div className="relative z-10 w-full max-w-md animate-scale-in">
           <div className="bg-white/[0.06] border border-white/10 rounded-3xl backdrop-blur-2xl p-6 md:p-10 shadow-2xl shadow-purple-500/5 text-center">
-
             <div className="mx-auto w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center mb-6 animate-bounce-in shadow-lg shadow-emerald-500/30">
               <svg className="w-8 h-8 md:w-10 md:h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-
             <h2 className="text-xl md:text-2xl font-bold mb-2 bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">
               Account Created!
             </h2>
@@ -98,13 +141,11 @@ export default function Signup() {
               We sent a confirmation link to <br />
               <span className="text-white font-medium">{email}</span>
             </p>
-
             <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 mb-6">
               <p className="text-xs text-emerald-300">
                 📧 Check your email inbox (and spam folder) to verify your account.
               </p>
             </div>
-
             <Link
               href="/login"
               className="block w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 font-semibold text-sm hover:from-purple-500 hover:to-blue-500 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25 hover:scale-[1.02] active:scale-[0.98]"
@@ -134,18 +175,31 @@ export default function Signup() {
           {/* Glass Card */}
           <div className="bg-white/[0.06] border border-white/10 rounded-3xl backdrop-blur-2xl p-5 md:p-8 shadow-2xl shadow-purple-500/5 hover:shadow-purple-500/10 transition-shadow duration-500">
 
-            {/* ✅ Google Sign Up */}
+            {/* ✅ Google Sign Up — Fixed for Mobile */}
             <button
               onClick={handleGoogleSignup}
-              className="w-full flex items-center justify-center gap-3 py-3 rounded-2xl bg-white/[0.08] border border-white/15 hover:bg-white/[0.12] hover:border-white/25 transition-all duration-300 group mb-6 hover:scale-[1.01] active:scale-[0.99]"
+              disabled={isGoogleLoading}
+              className="w-full flex items-center justify-center gap-3 py-3 rounded-2xl bg-white/[0.08] border border-white/15 hover:bg-white/[0.12] hover:border-white/25 transition-all duration-300 group mb-6 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-              </svg>
-              <span className="text-sm font-medium text-gray-300">Sign up with Google</span>
+              {isGoogleLoading ? (
+                <>
+                  <svg className="animate-spin w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-300">Connecting to Google...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-300">Sign up with Google</span>
+                </>
+              )}
             </button>
 
             {/* Divider */}
@@ -163,11 +217,10 @@ export default function Signup() {
                 </label>
                 <div className="relative">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-purple-400 transition-colors">
-                    <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                   </div>
-                  {/* text-base on mobile prevents iOS zoom */}
                   <input
                     type="email"
                     placeholder="you@example.com"
@@ -185,7 +238,7 @@ export default function Signup() {
                 </label>
                 <div className="relative">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-purple-400 transition-colors">
-                    <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                   </div>
@@ -202,11 +255,11 @@ export default function Signup() {
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
                   >
                     {showPassword ? (
-                      <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                       </svg>
                     ) : (
-                      <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                       </svg>
@@ -222,7 +275,7 @@ export default function Signup() {
                 </label>
                 <div className="relative">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-purple-400 transition-colors">
-                    <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
                   </div>
@@ -239,7 +292,6 @@ export default function Signup() {
                         : "border-white/10 focus:border-purple-500/50 hover:border-white/20"
                     }`}
                   />
-                  {/* Match Indicator */}
                   {confirmPassword && (
                     <div className="absolute right-4 top-1/2 -translate-y-1/2">
                       {confirmPassword === password ? (
@@ -260,7 +312,7 @@ export default function Signup() {
                 </div>
               </div>
 
-              {/* Password Strength Indicator */}
+              {/* Password Strength */}
               {password && (
                 <div className="animate-fade-in">
                   <div className="flex gap-1.5 mb-1.5">
@@ -269,13 +321,10 @@ export default function Signup() {
                         key={level}
                         className={`h-1 flex-1 rounded-full transition-all duration-500 ${
                           password.length >= level * 3
-                            ? level <= 1
-                              ? "bg-red-500"
-                              : level <= 2
-                              ? "bg-orange-500"
-                              : level <= 3
-                              ? "bg-yellow-500"
-                              : "bg-emerald-500"
+                            ? level <= 1 ? "bg-red-500"
+                            : level <= 2 ? "bg-orange-500"
+                            : level <= 3 ? "bg-yellow-500"
+                            : "bg-emerald-500"
                             : "bg-white/10"
                         }`}
                       />
@@ -300,9 +349,7 @@ export default function Signup() {
               disabled={isLoading || !email || !password || password !== confirmPassword}
               className="w-full mt-6 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-[length:200%_100%] animate-gradient font-semibold text-sm transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none relative overflow-hidden group"
             >
-              {/* Shine Effect */}
               <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-
               <span className="relative flex items-center justify-center gap-2">
                 {isLoading ? (
                   <>
@@ -323,7 +370,6 @@ export default function Signup() {
               </span>
             </button>
 
-            {/* Terms */}
             <p className="text-[10px] text-gray-500 text-center mt-4 leading-relaxed">
               By signing up, you agree to our{" "}
               <span className="text-purple-400 hover:underline cursor-pointer">Terms</span> and{" "}
@@ -334,10 +380,7 @@ export default function Signup() {
           {/* Login Link */}
           <p className="text-center mt-6 text-sm text-gray-400">
             Already have an account?{" "}
-            <Link
-              href="/login"
-              className="text-purple-400 hover:text-purple-300 font-semibold hover:underline underline-offset-4 transition-colors"
-            >
+            <Link href="/login" className="text-purple-400 hover:text-purple-300 font-semibold hover:underline underline-offset-4 transition-colors">
               Sign In
             </Link>
           </p>
@@ -349,10 +392,7 @@ export default function Signup() {
               { icon: "🎨", label: "8+ Themes" },
               { icon: "📥", label: "Free Export" },
             ].map((feature) => (
-              <div
-                key={feature.label}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/15 transition-all duration-300 hover:scale-105"
-              >
+              <div key={feature.label} className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/15 transition-all duration-300 hover:scale-105">
                 <span className="text-lg">{feature.icon}</span>
                 <span className="text-[10px] text-gray-400 font-medium">{feature.label}</span>
               </div>
@@ -361,7 +401,6 @@ export default function Signup() {
         </div>
       )}
 
-      {/* ── CSS Animations ── */}
       <style jsx global>{`
         @keyframes gradient {
           0% { background-position: 0% 50%; }
@@ -369,25 +408,21 @@ export default function Signup() {
           100% { background-position: 0% 50%; }
         }
         .animate-gradient { animation: gradient 4s ease infinite; }
-
         @keyframes fade-up {
           from { opacity: 0; transform: translateY(30px); }
           to { opacity: 1; transform: translateY(0); }
         }
         .animate-fade-up { animation: fade-up 0.7s ease-out; }
-
         @keyframes fade-in {
           from { opacity: 0; }
           to { opacity: 1; }
         }
         .animate-fade-in { animation: fade-in 0.4s ease-out; }
-
         @keyframes scale-in {
           from { opacity: 0; transform: scale(0.8); }
           to { opacity: 1; transform: scale(1); }
         }
         .animate-scale-in { animation: scale-in 0.5s ease-out; }
-
         @keyframes bounce-in {
           0% { opacity: 0; transform: scale(0.3); }
           50% { transform: scale(1.1); }
@@ -395,26 +430,22 @@ export default function Signup() {
           100% { opacity: 1; transform: scale(1); }
         }
         .animate-bounce-in { animation: bounce-in 0.6s ease-out; }
-
         @keyframes float {
           0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
           50% { transform: translate(-50%, -50%) translateY(-20px); }
         }
         .animate-float { animation: float 8s ease-in-out infinite; }
-
         @keyframes float-logo {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-6px); }
         }
         .animate-float-logo { animation: float-logo 3s ease-in-out infinite; }
-
         @keyframes pulse-slow {
           0%, 100% { opacity: 0.2; transform: scale(1); }
           50% { opacity: 0.3; transform: scale(1.05); }
         }
         .animate-pulse-slow { animation: pulse-slow 6s ease-in-out infinite; }
         .animate-pulse-slow2 { animation: pulse-slow 8s ease-in-out infinite 2s; }
-
         @keyframes particle {
           0% { transform: translateY(100vh) scale(0); opacity: 0; }
           10% { opacity: 1; }
