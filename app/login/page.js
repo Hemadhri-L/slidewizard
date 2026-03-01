@@ -52,9 +52,20 @@ export default function Login() {
   }
 
   // ✅ Fixed Google Login using Server Route
-const handleGoogleLogin = () => {
+const handleGoogleSignup = async () => {
   setIsGoogleLoading(true)
-  window.location.href = "/api/auth/google"
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: "https://slidewizard-nine.vercel.app"
+    }
+  })
+
+  if (error) {
+    console.error(error)
+    setIsGoogleLoading(false)
+  }
 }
 
   const handleKeyPress = (e) => {
