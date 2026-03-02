@@ -662,29 +662,48 @@ export default function ExportPage() {
       renderEnd(pptx);
       const fileName = pptData.topic.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "-");
       const blob = await pptx.write({ outputType: "blob" });
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { alert("You must be logged in"); return; }
-      const finalFileName = fileName + "-" + T.name + ".pptx";
-      const filePath = user.id + "/" + finalFileName;
-      const { error: uploadError } = await supabase.storage.from("presentations").upload(filePath, blob, {
-        contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        upsert: true,
-      });
-      if (uploadError) { console.error(uploadError); alert("Upload failed"); return; }
-      await supabase.from("presentations").insert([{ user_id: user.id, title: pptData.topic, ppt_url: filePath }]);
-      const { data: signedData } = await supabase.storage.from("presentations").createSignedUrl(filePath, 60);
-      if (signedData && signedData.signedUrl) {
-        const response = await fetch(signedData.signedUrl);
-        const fileBlob = await response.blob();
-        const url = window.URL.createObjectURL(fileBlob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = finalFileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      }
+const { data: { user } } = await supabase.auth.getUser();
+if (!user) { alert("You must be logged in"); return; }
+const finalFileName = fileName + "-" + T.name + ".pptx";
+const filePath = user.id + "/" + finalFileName;
+
+// Upload to Supabase FIRST (wait for it to complete)
+const pptxBlob = new Blob([blob], {
+  type: "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+});
+
+const { error: uploadError } = await supabase.storage
+  .from("presentations")
+  .upload(filePath, pptxBlob, {
+    contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    upsert: true,
+  });
+
+if (uploadError) {
+  console.error("Upload error:", uploadError);
+} else {
+  // Save to database only after upload succeeds
+  await supabase.from("presentations").insert([{
+    user_id: user.id,
+    title: pptData.topic,
+    ppt_url: filePath,
+  }]);
+}
+
+// Download directly from memory (works on both mobile & desktop)
+const downloadUrl = URL.createObjectURL(pptxBlob);
+const link = document.createElement("a");
+link.href = downloadUrl;
+link.download = finalFileName;
+link.setAttribute("type", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+document.body.appendChild(link);
+link.click();
+
+setTimeout(() => {
+  document.body.removeChild(link);
+  URL.revokeObjectURL(downloadUrl);
+}, 1000);
+      
       setGenerationProgress(100);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 4000);

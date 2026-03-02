@@ -56,24 +56,52 @@ export default function Dashboard() {
     setLoading(false);
   };
 
-  const downloadFile = async (filePath, title) => {
+  const [downloadingId, setDownloadingId] = useState(null);
+
+const downloadFile = async (filePath, title, id) => {
+  setDownloadingId(id);
+
+  try {
     const { data } = await supabase.storage
       .from("presentations")
       .createSignedUrl(filePath, 60);
 
-    if (!data?.signedUrl) return;
+    if (!data?.signedUrl) {
+      alert("Download link expired. Please try again.");
+      setDownloadingId(null);
+      return;
+    }
 
     const response = await fetch(data.signedUrl);
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
+    const arrayBuffer = await response.arrayBuffer();
+
+    // Force correct MIME type (fixes mobile .zip issue)
+    const pptxBlob = new Blob([arrayBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    });
+
+    const cleanTitle = title.replace(/[^a-zA-Z0-9\s\-]/g, "").replace(/\s+/g, "-");
+    const fileName = cleanTitle + ".pptx";
+
+    const url = URL.createObjectURL(pptxBlob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${title}.pptx`;
+    link.download = fileName;
+    link.setAttribute("type", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  };
+
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 1000);
+  } catch (err) {
+    console.error("Download failed:", err);
+    alert("Download failed. Please try again.");
+  }
+
+  setDownloadingId(null);
+};
 
   const deleteFile = async (filePath, id) => {
     const confirmDelete = confirm("Delete this presentation?");
@@ -221,14 +249,27 @@ export default function Dashboard() {
                 <div className="flex gap-3">
                   {/* Download Button (Primary) */}
                   <button
-                    onClick={() => downloadFile(ppt.ppt_url, ppt.title)}
-                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 active:bg-purple-600 active:border-purple-500 transition-colors text-sm font-medium text-gray-200"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Download
-                  </button>
+  onClick={() => downloadFile(ppt.ppt_url, ppt.title, ppt.id)}
+  disabled={downloadingId === ppt.id}
+  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 active:bg-purple-600 active:border-purple-500 transition-colors text-sm font-medium text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  {downloadingId === ppt.id ? (
+    <>
+      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+      </svg>
+      Downloading...
+    </>
+  ) : (
+    <>
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+      </svg>
+      Download
+    </>
+  )}
+</button>
 
                   {/* Delete Button (Secondary/Icon) */}
                   <button
