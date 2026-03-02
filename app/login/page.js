@@ -45,25 +45,11 @@ const handleLogin = async () => {
   })
 
   const data = await res.json()
+
+  console.log("API RESPONSE:", data)
+  alert(JSON.stringify(data))
+
   setIsLoading(false)
-
-  if (!res.ok) {
-    alert(data.error)
-    return
-  }
-
-  const { error } = await supabase.auth.setSession({
-    access_token: data.access_token,
-    refresh_token: data.refresh_token,
-  })
-
-  if (error) {
-    alert(error.message)
-    return
-  }
-
-  router.refresh()
-  router.push("/")
 }
 
   // ✅ Fixed Google Login using Server Route
