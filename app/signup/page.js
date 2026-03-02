@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react"
 // We use createClient here to ensure we use the Browser Client with Cookies
-import { createClient } from "@/utils/supabaseClient" 
+import { supabase } from "@/utils/supabaseClient"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 export default function Signup() {
   const router = useRouter()
   // Initialize the client component-side
-  const supabase = createClient()
+  
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -28,7 +28,7 @@ export default function Signup() {
       }
     }
     checkSession()
-  }, [router, supabase])
+  }, [router])
 
   // Standard Email/Password Signup
   const handleSignup = async () => {

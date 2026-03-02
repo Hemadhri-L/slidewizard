@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 // Import createClient to handle cookies properly
-\import { supabase } from "@/utils/supabaseClient"
+import { supabase } from "@/utils/supabaseClient"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
@@ -26,7 +26,7 @@ export default function Login() {
       }
     }
     checkSession()
-  }, [router, supabase])
+  }, [router])
 
   // Standard Email Login
   // Standard Email Login (Server Proxy Version)
