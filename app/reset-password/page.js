@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { supabase } from "@/utils/supabaseClient"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 
-export default function ResetPassword() {
+function ResetPasswordForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -14,33 +14,43 @@ export default function ResetPassword() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
-  const [isValidSession, setIsValidSession] = useState(false)
+  const [isValidToken, setIsValidToken] = useState(false)
   const [isChecking, setIsChecking] = useState(true)
+  const [accessToken, setAccessToken] = useState("")
 
+  // Verify the recovery token via our API (server-side, bypasses ISP block)
   useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        setIsValidSession(true)
+    const verifyToken = async () => {
+      const token_hash = searchParams.get("token_hash")
+      const type = searchParams.get("type")
+
+      if (!token_hash || type !== "recovery") {
+        setIsChecking(false)
+        return
       }
+
+      try {
+        const res = await fetch("/api/verify-recovery", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token_hash, type }),
+        })
+
+        const data = await res.json()
+
+        if (res.ok && data.access_token) {
+          setAccessToken(data.access_token)
+          setIsValidToken(true)
+        }
+      } catch (err) {
+        console.error("Verification failed:", err)
+      }
+
       setIsChecking(false)
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event) => {
-        if (event === "PASSWORD_RECOVERY") {
-          setIsValidSession(true)
-          setIsChecking(false)
-        }
-      }
-    )
-
-    checkSession()
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [])
+    verifyToken()
+  }, [searchParams])
 
   const getPasswordStrength = (pwd) => {
     let strength = 0
@@ -73,28 +83,42 @@ export default function ResetPassword() {
 
     setIsLoading(true)
 
-    const { error } = await supabase.auth.updateUser({
-      password: password,
-    })
+    try {
+      // Update password via our API (server-side, bypasses ISP block)
+      const res = await fetch("/api/update-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          access_token: accessToken,
+          password,
+        }),
+      })
 
-    setIsLoading(false)
+      const data = await res.json()
 
-    if (error) {
-      alert(error.message)
-      return
+      if (!res.ok) {
+        alert(data.error)
+        setIsLoading(false)
+        return
+      }
+
+      setIsSuccess(true)
+
+      setTimeout(() => {
+        router.push("/login")
+      }, 3000)
+    } catch (err) {
+      alert("Something went wrong. Please try again.")
     }
 
-    setIsSuccess(true)
-
-    setTimeout(() => {
-      router.push("/login")
-    }, 3000)
+    setIsLoading(false)
   }
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter") handleResetPassword()
   }
 
+  // Loading State
   if (isChecking) {
     return (
       <main className="relative min-h-[100dvh] overflow-hidden bg-[#0a0a0f] text-white flex items-center justify-center">
@@ -109,7 +133,8 @@ export default function ResetPassword() {
     )
   }
 
-  if (!isValidSession && !isChecking) {
+  // Invalid Token State
+  if (!isValidToken && !isChecking) {
     return (
       <main className="relative min-h-[100dvh] overflow-hidden bg-[#0a0a0f] text-white flex items-center justify-center px-4">
         <div className="absolute w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-red-600 rounded-full blur-[120px] md:blur-[180px] opacity-20 -top-20 -right-20 md:-top-40 md:-right-40" />
@@ -153,15 +178,14 @@ export default function ResetPassword() {
     )
   }
 
+  // Main Reset Form
   return (
     <main className="relative min-h-[100dvh] overflow-hidden bg-[#0a0a0f] text-white flex items-center justify-center px-4 py-6 md:px-5 md:py-10">
 
-      {/* ── Background Effects ── */}
       <div className="absolute w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-blue-600 rounded-full blur-[120px] md:blur-[180px] opacity-20 -top-20 -right-20 md:-top-40 md:-right-40 animate-pulse-slow" />
       <div className="absolute w-[250px] md:w-[400px] h-[250px] md:h-[400px] bg-purple-600 rounded-full blur-[100px] md:blur-[160px] opacity-15 -bottom-20 -left-20 md:-bottom-32 md:-left-32 animate-pulse-slow2" />
       <div className="absolute w-[200px] md:w-[300px] h-[200px] md:h-[300px] bg-cyan-600 rounded-full blur-[90px] md:blur-[140px] opacity-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-float" />
 
-      {/* ── Particles ── */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[...Array(6)].map((_, i) => (
           <div
@@ -178,7 +202,6 @@ export default function ResetPassword() {
 
       <div className="relative z-10 w-full max-w-md animate-fade-up">
 
-        {/* ── Header ── */}
         <div className="text-center mb-6 md:mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-green-600 to-blue-600 mb-4 shadow-lg shadow-green-500/25 animate-float-logo">
             <span className="text-2xl md:text-3xl">{isSuccess ? "✅" : "🔒"}</span>
@@ -194,7 +217,6 @@ export default function ResetPassword() {
           </p>
         </div>
 
-        {/* ── Form Card ── */}
         <div className="bg-white/[0.06] border border-white/10 rounded-3xl backdrop-blur-2xl p-5 md:p-8 shadow-2xl shadow-blue-500/5 hover:shadow-blue-500/10 transition-shadow duration-500">
 
           {isSuccess ? (
@@ -204,18 +226,13 @@ export default function ResetPassword() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-
               <p className="text-sm text-gray-400">
                 You will be redirected to the login page in a few seconds...
               </p>
-
               <Link
                 href="/login"
                 className="inline-flex items-center gap-2 py-3 px-6 rounded-2xl bg-gradient-to-r from-green-600 to-blue-600 font-semibold text-sm hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                </svg>
                 Go to Sign In
               </Link>
             </div>
@@ -259,7 +276,6 @@ export default function ResetPassword() {
                     </button>
                   </div>
 
-                  {/* Password Strength */}
                   {password && (
                     <div className="mt-2 ml-1">
                       <div className="flex gap-1 mb-1">
@@ -415,5 +431,24 @@ export default function ResetPassword() {
         .animate-particle { animation: particle 8s ease-in-out infinite; }
       `}</style>
     </main>
+  )
+}
+
+// Wrap in Suspense because of useSearchParams
+export default function ResetPassword() {
+  return (
+    <Suspense fallback={
+      <main className="relative min-h-[100dvh] overflow-hidden bg-[#0a0a0f] text-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <svg className="animate-spin w-8 h-8 text-purple-400" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <p className="text-gray-400 text-sm">Loading...</p>
+        </div>
+      </main>
+    }>
+      <ResetPasswordForm />
+    </Suspense>
   )
 }

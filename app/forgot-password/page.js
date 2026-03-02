@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { supabase } from "@/utils/supabaseClient"
 import Link from "next/link"
 
 export default function ForgotPassword() {
@@ -17,18 +16,28 @@ export default function ForgotPassword() {
 
     setIsLoading(true)
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    })
+    try {
+      // Goes through OUR server — not blocked by ISP
+      const res = await fetch("/api/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
 
-    setIsLoading(false)
+      const data = await res.json()
 
-    if (error) {
-      alert(error.message)
-      return
+      if (!res.ok) {
+        alert(data.error)
+        setIsLoading(false)
+        return
+      }
+
+      setIsSent(true)
+    } catch (err) {
+      alert("Something went wrong. Please try again.")
     }
 
-    setIsSent(true)
+    setIsLoading(false)
   }
 
   const handleKeyPress = (e) => {
