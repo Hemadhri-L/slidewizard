@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from "react"
 // Import createClient to handle cookies properly
-import { createClient } from "@/utils/supabaseClient"
+\import { supabase } from "@/utils/supabaseClient"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
 export default function Login() {
   // Initialize the client component-side
-  const supabase = createClient()
+  
   const router = useRouter()
 
   const [email, setEmail] = useState("")
@@ -45,11 +45,24 @@ const handleLogin = async () => {
   })
 
   const data = await res.json()
-
-  console.log("API RESPONSE:", data)
-  alert(JSON.stringify(data))
-
   setIsLoading(false)
+
+  if (!res.ok) {
+    alert(data.error)
+    return
+  }
+
+  const { error } = await supabase.auth.setSession({
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
+  })
+
+  if (error) {
+    alert(error.message)
+    return
+  }
+
+  router.push("/")
 }
 
   // ✅ Fixed Google Login using Server Route
