@@ -29,27 +29,36 @@ export default function Login() {
   }, [router, supabase])
 
   // Standard Email Login
-  const handleLogin = async () => {
-    if (!email || !password) {
-      alert("Please fill in all fields.")
-      return
-    }
-
-    setIsLoading(true)
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-
-    setIsLoading(false)
-
-    if (error) {
-      alert(error.message)
-    } else {
-      router.push("/")
-    }
+  // Standard Email Login (Server Proxy Version)
+const handleLogin = async () => {
+  if (!email || !password) {
+    alert("Please fill in all fields.")
+    return
   }
+
+  setIsLoading(true)
+
+  const res = await fetch("/api/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, password }),
+  })
+
+  const data = await res.json()
+
+  setIsLoading(false)
+
+  if (!res.ok) {
+    alert(data.error)
+  } else {
+    // 👇 IMPORTANT: Set session in browser
+    await supabase.auth.setSession(data.session)
+
+    router.push("/")
+  }
+}
 
   // ✅ Fixed Google Login using Server Route
 const handleGoogleLogin = async () => {
