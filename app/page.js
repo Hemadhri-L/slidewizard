@@ -16,7 +16,7 @@ function FadeInSection({ children, delay = 0 }) {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           setIsVisible(true);
-          observer.unobserve(entry.target); // Only animate once
+          observer.unobserve(entry.target);
         }
       });
     });
@@ -159,18 +159,26 @@ export default function Home() {
       {/* ── Navbar ── */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-6 py-4 sm:py-6 max-w-7xl mx-auto w-full backdrop-blur-md bg-[#0a0a0f]/50 border-b border-white/5">
         <Link href="/" className="flex items-center gap-3">
-  <Image
-    src="/slidewizard-logo-new.png"
-    alt="SlideWizard Logo"
-    width={400}
-    height={100}
-    priority
-    unoptimized
-    className="h-12 sm:h-14 md:h-16 w-auto object-contain"
-  />
-</Link>
+          <Image
+            src="/slidewizard-logo-new.png"
+            alt="SlideWizard Logo"
+            width={400}
+            height={100}
+            priority
+            unoptimized
+            className="h-12 sm:h-14 md:h-16 w-auto object-contain"
+          />
+        </Link>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* ── Blog Link ── */}
+          <Link
+            href="/blog"
+            className="px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-gray-300 hover:text-white transition-colors text-xs sm:text-sm font-medium"
+          >
+            Blog
+          </Link>
+
           {!loadingSession && (
             session ? (
               <>
@@ -241,9 +249,9 @@ export default function Home() {
           </div>
 
           <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold mb-6 tracking-tight leading-[1.1]">
-            Create stunning decks <br />
+             AI PPT Maker – Create Stunning Presentations<br />
             <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
-              in seconds.
+              in Seconds
             </span>
           </h1>
 
@@ -331,6 +339,30 @@ export default function Home() {
           </div>
         </div>
 
+        {/* ── SEO Content Section ── */}
+        <FadeInSection delay={50}>
+          <section className="w-full max-w-3xl mb-16 px-2">
+            <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-6 sm:p-10 space-y-8">
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+                  What is SlideWizard Pro?
+                </h2>
+                <p className="text-sm sm:text-base text-gray-400 leading-relaxed">
+                  SlideWizard Pro is a free AI PPT maker that helps students, teachers, and professionals create high-quality PowerPoint presentations instantly. Just enter your topic and our AI generates structured, ready-to-use slides in seconds.
+                </p>
+              </div>
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+                  Why Use Our AI Presentation Generator?
+                </h2>
+                <p className="text-sm sm:text-base text-gray-400 leading-relaxed">
+                  Our AI presentation generator automatically writes content, structures slides, and designs layouts for you. No design skills required. Create professional presentations faster than ever.
+                </p>
+              </div>
+            </div>
+          </section>
+        </FadeInSection>
+
         {/* ── The "Forever Free" Card ── */}
         <FadeInSection delay={100}>
           <div className="w-full max-w-4xl mb-16 px-2">
@@ -359,7 +391,7 @@ export default function Home() {
         </FadeInSection>
 
         {/* ── Sliding Feature Cards ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl px-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl px-2 mb-16">
           {[
             {
               icon: "🚀",
@@ -392,6 +424,48 @@ export default function Home() {
             </FadeInSection>
           ))}
         </div>
+
+        {/* ── Blog Preview Section ── */}
+        <FadeInSection delay={700}>
+          <section className="w-full max-w-5xl px-2">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl sm:text-3xl font-bold text-white">
+                From Our Blog
+              </h2>
+              <p className="text-sm text-gray-500 mt-2">
+                Tips, guides, and insights on AI-powered presentations.
+              </p>
+            </div>
+
+            <div className="max-w-lg mx-auto">
+              <Link href="/blog" className="block group">
+                <div className="relative bg-white/[0.03] border border-white/5 rounded-2xl p-6 hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 hover:-translate-y-1">
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-blue-500 opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity duration-500" />
+
+                  {/* Badge */}
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-[10px] font-semibold text-purple-300 uppercase tracking-wider mb-4">
+                    Guide
+                  </div>
+
+                  <h3 className="text-lg sm:text-xl font-bold mb-3 text-white group-hover:text-purple-300 transition-colors">
+                    How to Create a Presentation Using AI
+                  </h3>
+
+                  <p className="text-sm text-gray-400 leading-relaxed mb-5">
+                    Learn the fastest way to build professional PowerPoint slides using AI. From entering a topic to downloading a finished deck — this step-by-step guide covers everything you need.
+                  </p>
+
+                  <span className="inline-flex items-center gap-2 text-sm font-semibold text-purple-400 group-hover:text-purple-300 transition-colors">
+                    Read More
+                    <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </span>
+                </div>
+              </Link>
+            </div>
+          </section>
+        </FadeInSection>
 
       </div>
 
