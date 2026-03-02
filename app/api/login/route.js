@@ -14,8 +14,8 @@ export async function POST(req) {
     }
 
     return Response.json({
-      user: data.user,
-      session: data.session,
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
     })
   } catch (err) {
     return Response.json({ error: "Something went wrong" }, { status: 500 })
